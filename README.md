@@ -18,3 +18,4 @@ Nivells i Narrativa:
         3-3: Enfronta el Comandant Suprem Xylothian. La seva derrota salva la Terra.
 
 Desenllaç: En vèncer el líder alienígena, Nexus destrueix la fortalesa, tanca els portals Xylothians i assegura la supervivència de la humanitat... de moment.
+
