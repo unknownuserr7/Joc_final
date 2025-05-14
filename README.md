@@ -16,7 +16,7 @@ Nexus és un soldat cibernètic avançat, l'últim defensor de la humanitat cont
 
 Els enemics inclouen drons Xylothians bàsics, lloctinents amb més resistència, generals i mestres com a caps de nivell, i el Comandant Suprem Xylothian com a enemic final. Cada enemic té patrons d'atac diferents: els drons disparen bales senzilles, els caps llançen múltiples projectils, i el Comandant Suprem utilitza atacs circulars massius. La seva vida i dany augmenten amb la dificultat.
 
-!(Joc_final/assets/enemic.png)
+![Drons](assets/enemic.png)
 
 ## Les armes:
 
