@@ -10,12 +10,29 @@ En vèncer el líder alienígena, Nexus destrueix la fortalesa, tanca els portal
 
 ## El protagonista:
 
+Nexus és un soldat cibernètic avançat, l'últim defensor de la humanitat contra la invasió Xylothian. Equipat amb habilitats de moviment (moure's esquerra/dreta i saltar) i capacitat per utilitzar diverses armes, Nexus combina agilitat i força per enfrontar-se als enemics. La seva vida es representa amb cors, i pot recollir ítems per recuperar-la o reabastir bales.
 
 ## Els enemics:
 
+Els enemics inclouen drons Xylothians bàsics, lloctinents amb més resistència, generals i mestres com a caps de nivell, i el Comandant Suprem Xylothian com a enemic final. Cada enemic té patrons d'atac diferents: els drons disparen bales senzilles, els caps llançen múltiples projectils, i el Comandant Suprem utilitza atacs circulars massius. La seva vida i dany augmenten amb la dificultat.
+
 ## Les armes:
 
+El joc ofereix tres armes desbloquejables:
+
+- Pistola: Arma inicial amb dany baix (5) i capacitat limitada de 20 bales.
+- Fusell: Arma intermèdia amb dany mitjà (15) i 30 bales, ideal per a combats moderats.
+- Minigun: Arma avançada amb dany alt (25) i bales infinites, perfecta per als enemics finals.
+
+Les armes es poden comprar a la botiga amb monedes guanyades eliminant enemics.
+
 ## Features:
+
+1. Menú interactiu: Permet accedir a joc, botiga, guia i crèdits.
+2. Botiga: Desbloqueja i selecciona armes amb monedes.
+3. Nivells progressius: Tres sectors amb tres escenaris cadascun, amb narrativa i dificultat creixent.
+4. Efectes visuals i sonors: Partícules d'explosió, impactes i música ambient per a cada nivell.
+5. Sistema d'ítems: Recull vida o bales en els nivells.
 
 ## Nivells i Narrativa:
 
@@ -42,5 +59,9 @@ En vèncer el líder alienígena, Nexus destrueix la fortalesa, tanca els portal
 
 ## Eines:
 
+- Pygame: Llibreria principal per al desenvolupament del joc en Python, utilitzada per gestionar gràfics, so i entrada d'usuari.
+- Python amb asyncio: Per manejar la lògica asíncrona, especialment en escenes narratives i derrotes.
+- Assets personalitzats: Imatges (jugador, enemics, fons) i fitxers de so (trets, música) creats o editats per l'equip.
+- Grok (IA)
 
 
