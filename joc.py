@@ -6,6 +6,7 @@ import os
 import platform
 
 pygame.init()
+pygame.mixer.init()  # Initialize mixer for audio
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Joc Militar: Invasió Alienígena")
@@ -26,17 +27,19 @@ VERMELL_FOSC = (139, 0, 0)
 try:
     font = pygame.font.SysFont('PressStart2P', 40)
     font_small = pygame.font.SysFont('PressStart2P', 20)
+    font_arma = pygame.font.SysFont('PressStart2P', 30)
     font_narrativa = pygame.font.SysFont('PressStart2P', 24)
 except pygame.error:
     font = pygame.font.SysFont('arial', 40)
     font_small = pygame.font.SysFont('arial', 20)
+    font_arma = pygame.font.SysFont('arial', 30)
     font_narrativa = pygame.font.SysFont('arial', 24)
 
 try:
     jugador_imgs = {
-        'Pistola': pygame.transform.scale(pygame.image.load(os.path.join('assets', 'jugador_pistola.png')), (60,60)),
-        'Fusell': pygame.transform.scale(pygame.image.load(os.path.join('assets', 'jugador_fusell.png')), (60,60)),
-        'Minigun': pygame.transform.scale(pygame.image.load(os.path.join('assets', 'jugador_minigun.png')), (60,60))
+        'Pistola': pygame.transform.scale(pygame.image.load(os.path.join('assets', 'jugador_pistola.png')), (60, 60)),
+        'Fusell': pygame.transform.scale(pygame.image.load(os.path.join('assets', 'jugador_fusell.png')), (60, 60)),
+        'Minigun': pygame.transform.scale(pygame.image.load(os.path.join('assets', 'jugador_minigun.png')), (60, 60))
     }
     enemic_img = pygame.transform.scale(pygame.image.load(os.path.join('assets', 'enemic.png')), (40, 30))
     enemic_boss_imgs = {
@@ -56,13 +59,57 @@ try:
         (2, 1): pygame.transform.scale(pygame.image.load(os.path.join('assets', 'fons_nivell_2_1.png')), (WIDTH, HEIGHT)),
         (2, 2): pygame.transform.scale(pygame.image.load(os.path.join('assets', 'fons_nivell_2_2.png')), (WIDTH, HEIGHT))
     }
+    # Load sound effects and music with individual volume control
+    menu_click_sound = pygame.mixer.Sound(os.path.join('assets', 'menu_click.wav'))
+    pistol_shot_sound = pygame.mixer.Sound(os.path.join('assets', 'pistol_shot.wav'))
+    rifle_shot_sound = pygame.mixer.Sound(os.path.join('assets', 'rifle_shot.wav'))
+    minigun_shot_sound = pygame.mixer.Sound(os.path.join('assets', 'minigun_shot.wav'))
+    enemy_shot_sound = pygame.mixer.Sound(os.path.join('assets', 'enemy_shot.wav'))
+    boss_1_shot_sound = pygame.mixer.Sound(os.path.join('assets', 'boss_1_shot.wav'))
+    boss_2_shot_sound = pygame.mixer.Sound(os.path.join('assets', 'boss_2_shot.wav'))
+    bullet_impact_sound = pygame.mixer.Sound(os.path.join('assets', 'bullet_impact.wav'))
+    eliminated_sound = pygame.mixer.Sound(os.path.join('assets', 'eliminated.mp3'))
+    menu_music = pygame.mixer.Sound(os.path.join('assets', 'menu_music.mp3'))
+    level_1_music = pygame.mixer.Sound(os.path.join('assets', 'level_1_music.mp3'))
+    level_2_music = pygame.mixer.Sound(os.path.join('assets', 'level_2_music.mp3'))
+    level_3_music = pygame.mixer.Sound(os.path.join('assets', 'level_3_music.mp3'))
+    boss_final_music = pygame.mixer.Sound(os.path.join('assets', 'boss_final_music.mp3'))
+    # Set initial volumes (0.0 to 1.0)
+    menu_music.set_volume(0.5)  # Default 50% volume for menu music
+    level_1_music.set_volume(0.4)  # Default 60% volume for level 1 music
+    level_2_music.set_volume(0.4)
+    level_3_music.set_volume(0.4)
+    boss_final_music.set_volume(1.0)
+    menu_click_sound.set_volume(0.8)
+    pistol_shot_sound.set_volume(0.7)
+    rifle_shot_sound.set_volume(0.7)
+    minigun_shot_sound.set_volume(0.5)
+    enemy_shot_sound.set_volume(0.6)
+    boss_1_shot_sound.set_volume(0.6)
+    boss_2_shot_sound.set_volume(0.6)
+    bullet_impact_sound.set_volume(0.9)
+    eliminated_sound.set_volume(0.9)
 except pygame.error as e:
-    print(f"Error al cargar imágenes: {e}")
+    print(f"Error al cargar imágenes o sonidos: {e}")
     jugador_imgs = {key: None for key in ['Pistola', 'Fusell', 'Minigun']}
     enemic_img = None
     enemic_boss_imgs = {key: None for key in [0, 1, 2]}
     enemic_boss_final_img = None
     fons_nivells = {(i, j): None for i in range(3) for j in range(3)}
+    menu_click_sound = None
+    pistol_shot_sound = None
+    rifle_shot_sound = None
+    minigun_shot_sound = None
+    enemy_shot_sound = None
+    boss_1_shot_sound = None
+    boss_2_shot_sound = None
+    bullet_impact_sound = None
+    eliminated_sound = None
+    menu_music = None
+    level_1_music = None
+    level_2_music = None
+    level_3_music = None
+    boss_final_music = None
 
 class Particula:
     def __init__(self, x, y, vx, vy, color, duracio=20, size=5):
@@ -95,6 +142,8 @@ class Efecte:
         self.size = 10 if tipus == 'dispar' else 20 if tipus == 'explosio' else 15
         self.particules = []
         self.inicialitzar_particules()
+        if tipus == 'dany' and bullet_impact_sound:
+            bullet_impact_sound.play()
 
     def inicialitzar_particules(self):
         if self.tipus == 'dispar':
@@ -126,27 +175,6 @@ class Efecte:
                 vx = math.cos(angle) * velocitat
                 vy = math.sin(angle) * velocitat
                 self.particules.append(Particula(self.x, self.y, vx, vy, VERD, duracio=25, size=3))
-        elif self.tipus == 'escut':
-            for _ in range(15):
-                angle = random.uniform(0, 2 * math.pi)
-                velocitat = random.uniform(2, 5)
-                vx = math.cos(angle) * velocitat
-                vy = math.sin(angle) * velocitat
-                self.particules.append(Particula(self.x, self.y, vx, vy, BLAU, duracio=20, size=4))
-        elif self.tipus == 'radial':
-            for _ in range(20):
-                angle = random.uniform(0, 2 * math.pi)
-                velocitat = random.uniform(3, 7)
-                vx = math.cos(angle) * velocitat
-                vy = math.sin(angle) * velocitat
-                self.particules.append(Particula(self.x, self.y, vx, vy, TARONJA, duracio=25, size=5))
-        elif self.tipus == 'regen':
-            for _ in range(10):
-                angle = random.uniform(0, 2 * math.pi)
-                velocitat = random.uniform(1, 4)
-                vx = math.cos(angle) * velocitat
-                vy = math.sin(angle) * velocitat
-                self.particules.append(Particula(self.x, self.y, vx, vy, VERD, duracio=30, size=3))
         elif self.tipus == 'narrativa':
             for _ in range(20):
                 angle = random.uniform(0, 2 * math.pi)
@@ -180,12 +208,6 @@ class Efecte:
             pygame.draw.circle(screen, VERMELL, (self.x, self.y), self.size, 2)
         elif self.tipus == 'item':
             pygame.draw.circle(screen, VERD, (self.x, self.y), self.size, 2)
-        elif self.tipus == 'escut':
-            pygame.draw.circle(screen, BLAU, (self.x, self.y), self.size, 2)
-        elif self.tipus == 'radial':
-            pygame.draw.circle(screen, TARONJA, (self.x, self.y), self.size, 3)
-        elif self.tipus == 'regen':
-            pygame.draw.circle(screen, VERD, (self.x, self.y), self.size, 2)
         for particula in self.particules:
             particula.dibuixar()
 
@@ -202,18 +224,16 @@ class Jugador:
         self.velocitat = 5
         self.forca_salt = -15
         self.terra = True
-        self.escut_actiu = False
-        self.temps_escut = 0
-        self.direccio = 1  # 1 para derecha, -1 para izquierda
+        self.direccio = 1
 
     def moure(self, esquerra, dreta, salt):
         self.vx = 0
         if esquerra:
             self.vx = -self.velocitat
-            self.direccio = -1  # Gira a la izquierda
+            self.direccio = -1
         if dreta:
             self.vx = self.velocitat
-            self.direccio = 1  # Gira a la derecha
+            self.direccio = 1
         if salt and self.terra:
             self.vy = self.forca_salt
             self.terra = False
@@ -232,13 +252,10 @@ class Jugador:
     def dibuixar(self, arma_actual):
         jugador_img = jugador_imgs.get(arma_actual, None)
         if jugador_img:
-            # Gira la imagen según la dirección
             img_a_dibujar = pygame.transform.flip(jugador_img, self.direccio == -1, False) if self.vx != 0 else jugador_img
             screen.blit(img_a_dibujar, (self.x, self.y))
         else:
             pygame.draw.rect(screen, VERD, (self.x, self.y, self.width, self.height))
-        if self.escut_actiu:
-            pygame.draw.rect(screen, BLAU, (self.x - 5, self.y - 5, self.width + 10, self.height + 10), 3)
         if self.vida > 0:
             cors_ple = self.vida // 20
             for i in range(5):
@@ -274,6 +291,8 @@ class Boto:
     def clic(self):
         mouse_pos = pygame.mouse.get_pos()
         if self.rect.collidepoint(mouse_pos) and self.accio:
+            if menu_click_sound:
+                menu_click_sound.play()
             self.accio()
 
 class Plataforma:
@@ -321,6 +340,8 @@ class Enemic:
                     vx = math.cos(rad) * 8
                     vy = math.sin(rad) * 8
                     bales.append(Bala(self.x + self.width / 2, self.y + self.height / 2, vx, vy, dany=10))
+                if enemy_shot_sound:
+                    enemy_shot_sound.play()
         else:
             if self.temps_atac > (60 if self.es_boss else 90):
                 self.temps_atac = 0
@@ -328,8 +349,14 @@ class Enemic:
                     bales.append(Bala(self.x + self.width / 2, self.y + self.height / 2, vx_bala * 1.2, vy_bala * 1.2, dany=self.dany_bala))
                     bales.append(Bala(self.x + self.width / 2, self.y + self.height / 2, vx_bala * 1.2, vy_bala * 1.2 + 2, dany=self.dany_bala))
                     bales.append(Bala(self.x + self.width / 2, self.y + self.height / 2, vx_bala * 1.2, vy_bala * 1.2 - 2, dany=self.dany_bala))
+                    if self.nivell == 0 and boss_1_shot_sound:
+                        boss_1_shot_sound.play()
+                    elif self.nivell == 1 and boss_2_shot_sound:
+                        boss_2_shot_sound.play()
                 else:
                     bales.append(Bala(self.x + self.width / 2, self.y + self.height / 2, vx_bala, vy_bala, dany=self.dany_bala))
+                    if enemy_shot_sound:
+                        enemy_shot_sound.play()
 
         if self.temps_canvi_direccio > 60:
             self.vx += random.uniform(-1, 1)
@@ -396,15 +423,16 @@ class Bala:
         self.vy = vy
         self.tipus_arma = tipus_arma
         self.dany = dany
-        self.width = 20 if tipus_arma == 'massiu' else 10 if tipus_arma == 'pistola' else 15 if tipus_arma == 'fusell' else 8 if tipus_arma == 'minigun' else 20
-        self.height = 10 if tipus_arma == 'massiu' else 7 if tipus_arma == 'fusell' else 5 if tipus_arma == 'minigun' else 10
-        self.color = VERMELL if tipus_arma == 'massiu' else BLANC if tipus_arma == 'pistola' else GROC if tipus_arma == 'fusell' else TARONJA if tipus_arma == 'minigun' else TARONJA
+        self.width = 10 if tipus_arma == 'pistola' else 15 if tipus_arma == 'fusell' else 8 if tipus_arma == 'minigun' else 10
+        self.height = 7 if tipus_arma == 'fusell' else 5 if tipus_arma == 'minigun' else 10
+        self.color = VERMELL
 
     def actualitzar(self):
         self.x += self.vx
         self.y += self.vy
 
     def dibuixar(self):
+        pygame.draw.rect(screen, NEGRE, (self.x - 1, self.y - 1, self.width + 2, self.height + 2))
         pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
 
 class Item:
@@ -448,6 +476,17 @@ class Narrativa:
             y = random.randint(0, HEIGHT)
             self.efectes.append(Efecte(x, y, 'narrativa', duracio=100))
         self.boto = Boto(WIDTH // 2 - 100, HEIGHT - 100, 200, 50, "Continuar", self.continuar)
+        pygame.mixer.stop()
+        if not es_victoria:
+            if nivell == 0 and level_1_music:
+                level_1_music.play(-1)
+            elif nivell == 1 and level_2_music:
+                level_2_music.play(-1)
+            elif nivell == 2:
+                if escenari == 2 and boss_final_music:
+                    boss_final_music.play(-1)
+                elif level_3_music:
+                    level_3_music.play(-1)
 
     def get_text(self):
         if self.es_victoria:
@@ -571,10 +610,30 @@ class Derrota:
             x = random.randint(0, WIDTH)
             y = random.randint(0, HEIGHT)
             self.efectes.append(Efecte(x, y, 'derrota', duracio=100))
-        self.boto_menu = Boto(WIDTH // 2 - 200, HEIGHT - 100, 150, 50, "Menú", lambda: setattr(self.game, 'estat', 'menu'))
-        self.boto_reintentar = Boto(WIDTH // 2 + 50, HEIGHT - 100, 150, 50, "Reintentar", self.reintentar)
+        self.boto_menu = Boto(WIDTH // 2 - 200, HEIGHT - 100, 150, 50, "Menú", self.accio_menu)
+        self.boto_reintentar = Boto(WIDTH // 2 + 50, HEIGHT - 100, 150, 50, "Reintentar", self.accio_reintentar)
+        pygame.mixer.stop()  # Stop all music
+        if eliminated_sound:
+            eliminated_sound.play()  # Play only eliminated sound on defeat
 
-    def reintentar(self):
+    def accio_menu(self):
+        pygame.mixer.stop()
+        if menu_music:
+            menu_music.play(-1)  # Play menu music when returning to menu
+        self.game.inicialitzar_menu()
+        self.game.estat = 'menu'
+
+    def accio_reintentar(self):
+        pygame.mixer.stop()
+        if self.game.nivell_actual == 0 and level_1_music:
+            level_1_music.play(-1)  # Play level 1 music on retry
+        elif self.game.nivell_actual == 1 and level_2_music:
+            level_2_music.play(-1)  # Play level 2 music on retry
+        elif self.game.nivell_actual == 2:
+            if self.game.escenari_actual == 2 and boss_final_music:
+                boss_final_music.play(-1)  # Play boss music on retry
+            elif level_3_music:
+                level_3_music.play(-1)  # Play level 3 music on retry
         self.game.inicialitzar_nivell()
         self.game.estat = 'joc'
 
@@ -635,16 +694,10 @@ class Game:
         self.jugador = Jugador()
         self.arma_actual = 0
         self.armes = [
-            {'nom': 'Pistola', 'dany': 6, 'bales': 20, 'bales_max': 20, 'desbloquejada': True, 'cost': 0},
-            {'nom': 'Fusell', 'dany': 12, 'bales': 15, 'bales_max': 15, 'desbloquejada': False, 'cost': 50},
-            {'nom': 'Minigun', 'dany': 15, 'bales': float('inf'), 'bales_max': float('inf'), 'desbloquejada': False, 'cost': 100}
+            {'nom': 'Pistola', 'dany': 5, 'bales': 20, 'bales_max': 20, 'desbloquejada': True, 'cost': 0},
+            {'nom': 'Fusell', 'dany': 15, 'bales': 30, 'bales_max': 30, 'desbloquejada': False, 'cost': 700},
+            {'nom': 'Minigun', 'dany': 25, 'bales': float('inf'), 'bales_max': float('inf'), 'desbloquejada': False, 'cost': 1400}
         ]
-        self.habilitats = [
-            {'nom': 'Escut', 'usos': 0, 'usos_max': 3, 'tecla': pygame.K_1},
-            {'nom': 'Explosió Radial', 'usos': 0, 'usos_max': 3, 'tecla': pygame.K_2},
-            {'nom': 'Regeneració', 'usos': 0, 'usos_max': 3, 'tecla': pygame.K_3}
-        ]
-        self.habilitats_desbloquejades = False  # Nueva variable para rastrear desbloqueo
         self.monedes = 0
         self.nivells_desbloquejats = [[True, False, False], [False, False, False], [False, False, False]]
         self.nivell_actual = 0
@@ -664,18 +717,15 @@ class Game:
         self.missatge_selector = ""
         self.narrativa = None
         self.derrota = None
-        self.item_count = 0  # Contador para alternar vida y munición
-        self.max_items = 3  # Máximo de 3 items en pantalla
+        self.item_count = 0
+        self.max_items = 3
+        if menu_music:
+            menu_music.play(-1)  # Play menu music at startup
         self.inicialitzar_menu()
 
     def crear_accio_arma(self, index):
         def accio():
             self.seleccionar_arma(index)
-        return accio
-
-    def crear_accio_habilitat(self, index):
-        def accio():
-            self.comprar_habilitat(index)
         return accio
 
     def crear_accio_nivell(self, nivell, escenari):
@@ -701,7 +751,7 @@ class Game:
         self.items = []
         self.efectes = []
         self.temps_spawn_items = 0
-        self.item_count = 0  # Reiniciar contador de items
+        self.item_count = 0
         if self.nivell_actual == 0:
             if self.escenari_actual == 0:
                 self.plataformes = [
@@ -712,7 +762,7 @@ class Game:
                 ]
                 self.enemics.append(Enemic(WIDTH, random.randint(50, HEIGHT - 50), 30, nivell=self.nivell_actual))
                 self.enemics.append(Enemic(0, random.randint(50, HEIGHT - 50), 30, nivell=self.nivell_actual))
-                self.spawn_item_aleatori()  # Iniciar con un item de vida
+                self.spawn_item_aleatori()
             elif self.escenari_actual == 1:
                 self.plataformes = [
                     Plataforma(0, HEIGHT - 50, WIDTH, 50),
@@ -759,10 +809,6 @@ class Game:
                     Plataforma(550, HEIGHT - 350, 150, 20)
                 ]
                 self.enemics.append(Enemic(WIDTH, random.randint(50, HEIGHT - 50), 200, es_boss=True, nivell=self.nivell_actual))
-                # Desbloqueo de habilidades al completar 1-3
-                self.habilitats_desbloquejades = True
-                for habilitat in self.habilitats:
-                    habilitat['usos'] = habilitat['usos_max']
         else:
             if self.escenari_actual == 0:
                 self.plataformes = [
@@ -801,7 +847,7 @@ class Game:
         plataforma = random.choice(plataformes_disponibles)
         x = random.randint(plataforma.rect.x + 10, plataforma.rect.x + plataforma.rect.width - 30)
         y = plataforma.rect.y - 20
-        tipus = 'vida' if self.item_count % 2 == 0 else 'bales'  # Alternar vida y munición
+        tipus = 'vida' if self.item_count % 2 == 0 else 'bales'
         self.items.append(Item(x, y, tipus))
         self.item_count += 1
 
@@ -822,40 +868,28 @@ class Game:
         screen.blit(monedes_text, (WIDTH // 2 - monedes_text.get_width() // 2, 100))
 
         armes_titol = font_small.render('Armes', True, BLANC)
-        screen.blit(armes_titol, (WIDTH // 4 - armes_titol.get_width() // 2, 150))
-        habilitats_titol = font_small.render('Habilitats', True, BLANC)
-        screen.blit(habilitats_titol, (3 * WIDTH // 4 - habilitats_titol.get_width() // 2, 150))
+        screen.blit(armes_titol, (WIDTH // 2 - armes_titol.get_width() // 2, 150))
 
         self.botiga_botons = []
         for i, arma in enumerate(self.armes):
-            color = BLAU if arma['desbloquejada'] else VERMELL
+            if arma['desbloquejada'] and self.arma_actual == i:
+                color = VERD
+            else:
+                color = BLAU if arma['desbloquejada'] else VERMELL
             color_hover = VERMELL if arma['desbloquejada'] else TARONJA
             nom_boto = arma['nom']
             accio = self.crear_accio_arma(i)
-            self.botiga_botons.append(Boto(WIDTH // 4 - 100, 180 + i * 60, 200, 50, nom_boto, accio, color, color_hover))
-
-        for i, habilitat in enumerate(self.habilitats):
-            if self.habilitats_desbloquejades:
-                color = BLAU
-                color_hover = VERMELL
-                nom_boto = f"{habilitat['nom']} ({habilitat['usos']}/{habilitat['usos_max']})"
-                accio = None  # No se necesita acción, ya que los usos se manejan en el juego
-            else:
-                color = GRIS
-                color_hover = TARONJA
-                nom_boto = 'Desbloquejat al Nivell 1-3'
-                accio = lambda: self.mostrar_missatge_botiga("Habilitats desbloquejades al completar el Nivell 1-3")
-            self.botiga_botons.append(Boto(3 * WIDTH // 4 - 100, 180 + i * 60, 200, 50, nom_boto, accio, color, color_hover))
+            self.botiga_botons.append(Boto(WIDTH // 2 - 100, 180 + i * 60, 200, 50, nom_boto, accio, color, color_hover))
 
         for i, boto in enumerate(self.botiga_botons):
             boto.dibuixar()
             if i < len(self.armes):
                 if not self.armes[i]['desbloquejada']:
                     cost_text = font_small.render(f'Cost: {self.armes[i]["cost"]}', True, VERMELL)
-                    screen.blit(cost_text, (WIDTH // 4 + 110, 190 + i * 60))
+                    screen.blit(cost_text, (WIDTH // 2 + 110, 190 + i * 60))
                 if self.armes[i]['desbloquejada']:
                     status_text = font_small.render('Desbloquejat', True, VERD)
-                    screen.blit(status_text, (WIDTH // 4 + 110, 210 + i * 60))
+                    screen.blit(status_text, (WIDTH // 2 + 110, 210 + i * 60))
 
         if self.missatge_botiga:
             missatge_text = font_small.render(self.missatge_botiga, True, VERMELL)
@@ -889,12 +923,6 @@ class Game:
                 return
         self.arma_actual = index
 
-    def comprar_habilitat(self, index):
-        if not self.habilitats_desbloquejades:
-            self.mostrar_missatge_botiga("Habilitats desbloquejades al completar el Nivell 1-3")
-            return
-        # Las habilidades ya están desbloqueadas y con usos máximos, no se necesita comprar
-
     @staticmethod
     def dibuixar_guia():
         screen.fill(NEGRE)
@@ -904,9 +932,6 @@ class Game:
             'A, D: Moure esquerra/dreta',
             'ESPAC: Saltar',
             'Clic esquerre: Disparar',
-            '1: Activar Escut',
-            '2: Activar Explosió Radial',
-            '3: Activar Regeneració',
             'G: Tornar al menú'
         ]
         for i, control in enumerate(controls):
@@ -925,7 +950,7 @@ class Game:
             'Programació: Nacho i Abel',
             'Disseny de joc: Nacho i Abel',
             'Gràfics: Nacho i Abel',
-            'Música i efectes: Nacho i Abel',
+            'Música i efectes: YouTube lliure de drets ',
             'Producció: Nacho i Abel',
             'Gràcies per jugar!'
         ]
@@ -953,7 +978,7 @@ class Game:
         for boto in self.selector_botons:
             boto.dibuixar()
 
-        if hasattr(self, 'missatge_selector') and self.missatge_selector:
+        if self.missatge_selector:
             missatge_text = font_small.render(self.missatge_selector, True, VERMELL)
             screen.blit(missatge_text, (WIDTH // 2 - missatge_text.get_width() // 2, HEIGHT - 80))
             self.temps_missatge -= 1
@@ -966,7 +991,7 @@ class Game:
     def mostrar_narrativa(self, nivell, escenari):
         self.nivell_actual = nivell
         self.escenari_actual = escenari
-        self.nivells_desbloquejats[nivell][escenari] = True  # Asegura que el nivel actual quede desbloqueado
+        self.nivells_desbloquejats[nivell][escenari] = True
         self.narrativa = Narrativa(self, nivell, escenari)
         self.estat = 'narrativa'
 
@@ -979,9 +1004,7 @@ class Game:
         self.estat = 'derrota'
 
     def desbloquejar_seguent_nivell(self):
-        # Desbloquea el escenario actual permanentemente
         self.nivells_desbloquejats[self.nivell_actual][self.escenari_actual] = True
-        # Desbloquea el siguiente escenario o nivel
         if self.escenari_actual < 2:
             self.nivells_desbloquejats[self.nivell_actual][self.escenari_actual + 1] = True
         elif self.nivell_actual < 2:
@@ -997,26 +1020,14 @@ class Game:
                 self.estat = 'quit'
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_g:
+                    pygame.mixer.stop()  # Stop level music
+                    if menu_music:
+                        menu_music.play(-1)  # Play menu music
+                    self.inicialitzar_menu()
                     self.estat = 'menu'
-                elif event.key == pygame.K_1 and self.habilitats[0]['usos'] > 0 and not self.jugador.escut_actiu:
-                    self.habilitats[0]['usos'] -= 1
-                    self.jugador.escut_actiu = True
-                    self.jugador.temps_escut = 300
-                    self.efectes.append(Efecte(self.jugador.x + self.jugador.width / 2, self.jugador.y + self.jugador.height / 2, 'escut'))
-                elif event.key == pygame.K_2 and self.habilitats[1]['usos'] > 0:
-                    self.habilitats[1]['usos'] -= 1
-                    for angle in range(0, 360, 30):
-                        rad = math.radians(angle)
-                        vx = math.cos(rad) * 10
-                        vy = math.sin(rad) * 10
-                        self.bales.append(Bala(self.jugador.x + self.jugador.width / 2, self.jugador.y + self.jugador.height / 2, vx, vy, dany=20))
-                    self.efectes.append(Efecte(self.jugador.x + self.jugador.width / 2, self.jugador.y + self.jugador.height / 2, 'radial'))
-                elif event.key == pygame.K_3 and self.habilitats[2]['usos'] > 0:
-                    self.habilitats[2]['usos'] -= 1
-                    self.jugador.vida = min(self.jugador.vida + 20, 100)
-                    self.efectes.append(Efecte(self.jugador.x + self.jugador.width / 2, self.jugador.y + self.jugador.height / 2, 'regen'))
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if self.armes[self.arma_actual]['bales'] > 0 or self.armes[self.arma_actual]['nom'] == 'Minigun':
+                can_shoot = self.armes[self.arma_actual]['bales'] > 0 or self.armes[self.arma_actual]['nom'] == 'Minigun'
+                if can_shoot:
                     mouse_pos = pygame.mouse.get_pos()
                     dx = mouse_pos[0] - (self.jugador.x + self.jugador.width / 2)
                     dy = mouse_pos[1] - (self.jugador.y + self.jugador.height / 2)
@@ -1030,14 +1041,15 @@ class Game:
                     if self.armes[self.arma_actual]['nom'] != 'Minigun':
                         self.armes[self.arma_actual]['bales'] -= 1
                     self.efectes.append(Efecte(self.jugador.x + self.jugador.width / 2, self.jugador.y + self.jugador.height / 2, 'dispar'))
+                    if tipus_arma == 'pistola' and pistol_shot_sound:
+                        pistol_shot_sound.play()
+                    elif tipus_arma == 'fusell' and rifle_shot_sound:
+                        rifle_shot_sound.play()
+                    elif tipus_arma == 'minigun' and minigun_shot_sound:
+                        minigun_shot_sound.play()
 
         keys = pygame.key.get_pressed()
         self.jugador.moure(keys[pygame.K_a], keys[pygame.K_d], keys[pygame.K_SPACE])
-
-        if self.jugador.escut_actiu:
-            self.jugador.temps_escut -= 1
-            if self.jugador.temps_escut <= 0:
-                self.jugador.escut_actiu = False
 
         for enemic in self.enemics[:]:
             bales_enemic = enemic.actualitzar(self.jugador, self.enemics)
@@ -1065,9 +1077,8 @@ class Game:
                 self.bales_enemics.remove(bala)
                 continue
             if pygame.Rect(self.jugador.x, self.jugador.y, self.jugador.width, self.jugador.height).colliderect(pygame.Rect(bala.x, bala.y, bala.width, bala.height)):
-                if not self.jugador.escut_actiu:
-                    self.jugador.vida -= bala.dany
-                    self.efectes.append(Efecte(self.jugador.x + self.jugador.width / 2, self.jugador.y + self.jugador.height / 2, 'dany'))
+                self.jugador.vida -= bala.dany
+                self.efectes.append(Efecte(self.jugador.x + self.jugador.width / 2, self.jugador.y + self.jugador.height / 2, 'dany'))
                 self.bales_enemics.remove(bala)
 
         for item_iter in self.items[:]:
@@ -1076,12 +1087,12 @@ class Game:
                     self.jugador.vida = min(self.jugador.vida + 20, 100)
                     self.efectes.append(Efecte(item_iter.x + item_iter.width / 2, item_iter.y + item_iter.height / 2, 'item'))
                     self.items.remove(item_iter)
-                    self.spawn_item_aleatori()  # Reaparece otro item
+                    self.spawn_item_aleatori()
                 elif item_iter.tipus == 'bales' and self.armes[self.arma_actual]['bales'] < self.armes[self.arma_actual]['bales_max']:
                     self.armes[self.arma_actual]['bales'] = self.armes[self.arma_actual]['bales_max']
                     self.efectes.append(Efecte(item_iter.x + item_iter.width / 2, item_iter.y + item_iter.height / 2, 'item'))
                     self.items.remove(item_iter)
-                    self.spawn_item_aleatori()  # Reaparece otro item
+                    self.spawn_item_aleatori()
 
         self.temps_spawn_items += 1
         if self.temps_spawn_items >= 300 and len(self.items) < self.max_items:
@@ -1105,11 +1116,14 @@ class Game:
             self.desbloquejar_seguent_nivell()
             if self.nivell_actual == 2 and self.escenari_actual == 2:
                 self.mostrar_narrativa_victoria()
-            elif self.escenari_actual == 2:
-                self.dibuixar_selector()
             else:
-                self.escenari_actual += 1
-                self.inicialitzar_nivell()
+                if self.escenari_actual < 2:
+                    self.escenari_actual += 1
+                    self.mostrar_narrativa(self.nivell_actual, self.escenari_actual)
+                elif self.nivell_actual < 2:
+                    self.nivell_actual += 1
+                    self.escenari_actual = 0
+                    self.mostrar_narrativa(self.nivell_actual, self.escenari_actual)
 
     def dibuixar_joc(self):
         key = (self.nivell_actual, self.escenari_actual)
@@ -1133,17 +1147,20 @@ class Game:
         for efecte_iter in self.efectes:
             efecte_iter.dibuixar()
 
-        # Mostrar habilidades arriba en el centro
-        y_offset = 10
-        for i, habilitat in enumerate(self.habilitats):
-            text = font_small.render(f"{habilitat['nom']}: {habilitat['usos']}/{habilitat['usos_max']}", True, BLANC)
-            screen.blit(text, (WIDTH // 2 - text.get_width() // 2, y_offset))
-            y_offset += 30
+        arma_text = font_arma.render(self.armes[self.arma_actual]['nom'].upper(), True, BLANC)
+        arma_text_rect = arma_text.get_rect(center=(WIDTH // 2, 30))
+        for dx, dy in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
+            contour_text = font_arma.render(self.armes[self.arma_actual]['nom'].upper(), True, NEGRE)
+            screen.blit(contour_text, (arma_text_rect.x + dx, arma_text_rect.y + dy))
+        screen.blit(arma_text, arma_text_rect)
 
-        arma_text = font_small.render(f'arma: {self.armes[self.arma_actual]["nom"]}', True, BLANC)
-        bales_text = font_small.render(f'Bales: {self.armes[self.arma_actual]["bales"]}', True, BLANC)
-        screen.blit(arma_text, (10, 50))
-        screen.blit(bales_text, (10, 80))
+        bales_str = "∞" if self.armes[self.arma_actual]['nom'] == 'Minigun' else str(int(self.armes[self.arma_actual]['bales']))
+        bales_text = font_small.render(f"Bales: {bales_str}", True, BLANC)
+        bales_text_rect = bales_text.get_rect(center=(WIDTH // 2, 60))
+        for dx, dy in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
+            contour_text = font_small.render(f"Bales: {bales_str}", True, NEGRE)
+            screen.blit(contour_text, (bales_text_rect.x + dx, bales_text_rect.y + dy))
+        screen.blit(bales_text, bales_text_rect)
 
     async def dibuixar_derrota(self):
         await self.derrota.actualitzar()
@@ -1170,7 +1187,8 @@ class Game:
                         self.derrota.boto_menu.clic()
                         self.derrota.boto_reintentar.clic()
                     elif self.estat == 'joc':
-                        if self.armes[self.arma_actual]['bales'] > 0 or self.armes[self.arma_actual]['nom'] == 'Minigun':
+                        can_shoot = self.armes[self.arma_actual]['bales'] > 0 or self.armes[self.arma_actual]['nom'] == 'Minigun'
+                        if can_shoot:
                             mouse_pos = pygame.mouse.get_pos()
                             dx = mouse_pos[0] - (self.jugador.x + self.jugador.width / 2)
                             dy = mouse_pos[1] - (self.jugador.y + self.jugador.height / 2)
@@ -1184,6 +1202,12 @@ class Game:
                             if self.armes[self.arma_actual]['nom'] != 'Minigun':
                                 self.armes[self.arma_actual]['bales'] -= 1
                             self.efectes.append(Efecte(self.jugador.x + self.jugador.width / 2, self.jugador.y + self.jugador.height / 2, 'dispar'))
+                            if tipus_arma == 'pistola' and pistol_shot_sound:
+                                pistol_shot_sound.play()
+                            elif tipus_arma == 'fusell' and rifle_shot_sound:
+                                rifle_shot_sound.play()
+                            elif tipus_arma == 'minigun' and minigun_shot_sound:
+                                minigun_shot_sound.play()
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_g:
                         self.estat = 'menu'
@@ -1221,6 +1245,8 @@ class Game:
             pygame.display.flip()
             clock.tick(FPS)
 
-if __name__ == "__main__":
-    game = Game()
-    asyncio.run(game.main())
+if platform.system() == "Emscripten":
+    asyncio.ensure_future(Game().main())
+else:
+    if __name__ == "__main__":
+        asyncio.run(Game().main())
