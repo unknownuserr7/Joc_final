@@ -4,6 +4,7 @@ import math
 import asyncio
 import os
 import platform
+import uuid
 
 pygame.init()
 pygame.mixer.init()  # Initialize mixer for audio
@@ -59,6 +60,7 @@ try:
         (2, 1): pygame.transform.scale(pygame.image.load(os.path.join('assets', 'fons_nivell_2_1.png')), (WIDTH, HEIGHT)),
         (2, 2): pygame.transform.scale(pygame.image.load(os.path.join('assets', 'fons_nivell_2_2.png')), (WIDTH, HEIGHT))
     }
+    logo_img = pygame.transform.scale(pygame.image.load(os.path.join('assets', 'logo.png')), (300, 200))  # Adjust size as needed
     # Load sound effects and music with individual volume control
     menu_click_sound = pygame.mixer.Sound(os.path.join('assets', 'menu_click.wav'))
     pistol_shot_sound = pygame.mixer.Sound(os.path.join('assets', 'pistol_shot.wav'))
@@ -96,6 +98,7 @@ except pygame.error as e:
     enemic_boss_imgs = {key: None for key in [0, 1, 2]}
     enemic_boss_final_img = None
     fons_nivells = {(i, j): None for i in range(3) for j in range(3)}
+    logo_img = None
     menu_click_sound = None
     pistol_shot_sound = None
     rifle_shot_sound = None
@@ -469,6 +472,7 @@ class Narrativa:
         self.text_complet = self.get_text()
         self.text_mostrat = ""
         self.temps_caracter = 5
+
         self.temps_actual = 0
         self.efectes = []
         for _ in range(10):
@@ -690,7 +694,7 @@ class Derrota:
 
 class Game:
     def __init__(self):
-        self.estat = 'menu'
+        self.estat = 'loading'  # Start with loading state
         self.jugador = Jugador()
         self.arma_actual = 0
         self.armes = [
@@ -719,9 +723,27 @@ class Game:
         self.derrota = None
         self.item_count = 0
         self.max_items = 3
+        self.loading_temps = 0  # Timer for loading screen
         if menu_music:
             menu_music.play(-1)  # Play menu music at startup
         self.inicialitzar_menu()
+
+    def inicialitzar_loading(self):
+        self.loading_temps = 0  # Reset loading timer
+
+    def dibuixar_loading(self):
+        screen.fill(NEGRE)
+        # Draw logo
+        if logo_img:
+            screen.blit(logo_img, (WIDTH // 2 - logo_img.get_width() // 2, HEIGHT // 2 - logo_img.get_height() // 2 - 50))
+        else:
+            pygame.draw.rect(screen, BLANC, (WIDTH // 2 - 150, HEIGHT // 2 - 100, 300, 200))  # Fallback rectangle
+        # Draw "LOADING GAME..." text
+        loading_text = font.render("LOADING GAME...", True, BLANC)
+        screen.blit(loading_text, (WIDTH // 2 - loading_text.get_width() // 2, HEIGHT // 2 + 100))
+        # Draw "FET PER NACHO I ABEL" text
+        credits_text = font_small.render("FET PER NACHO I ABEL", True, BLANC)
+        screen.blit(credits_text, (WIDTH // 2 - credits_text.get_width() // 2, HEIGHT // 2 + 150))
 
     def crear_accio_arma(self, index):
         def accio():
@@ -1215,7 +1237,12 @@ class Game:
                         if self.estat in ['botiga', 'guia', 'credits', 'selector']:
                             self.estat = 'menu'
 
-            if self.estat == 'menu':
+            if self.estat == 'loading':
+                self.dibuixar_loading()
+                self.loading_temps += 1
+                if self.loading_temps >= FPS * 10:  # 10 seconds
+                    self.estat = 'menu'
+            elif self.estat == 'menu':
                 self.dibuixar_menu()
             elif self.estat == 'botiga':
                 self.dibuixar_botiga()
